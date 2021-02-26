@@ -1,5 +1,8 @@
 @testset "RegressionBasedDID" begin
     hrs = exampledata("hrs")
+
+    @test _get_default(Reg(), NamedTuple()) == merge((default(s) for s in Reg())...)
+
     r = @did(Reg, data=hrs, dynamic(:wave, -1), notyettreated([11]),
         vce=Vcov.cluster(:hhidpn), yterm=term(:oop_spend), treatname=:wave_hosp,
         treatintterms=(), xterms=(fe(:wave)+fe(:hhidpn)))
@@ -48,4 +51,24 @@
         ──────────────────────────────────────────────────────────────────────
         Fixed effects: none
         ──────────────────────────────────────────────────────────────────────"""
+end
+
+@testset "@specset" begin
+    hrs = exampledata("hrs")
+    # The first two specs are identical hence no repetition of steps should occur
+    # The third spec should only share the first two steps with the others
+    r = @specset [verbose] begin
+        @did(Reg, dynamic(:wave, -1), notyettreated([11]), data=hrs,
+            yterm=term(:oop_spend), treatname=:wave_hosp, treatintterms=(),
+            xterms=(fe(:wave)+fe(:hhidpn)))
+        @did(Reg, dynamic(:wave, -1), notyettreated([11]), data=hrs,
+            yterm=term(:oop_spend), treatname=:wave_hosp, treatintterms=(),
+            xterms=(fe(:wave)+fe(:hhidpn)))
+        @did(Reg, dynamic(:wave, -1), nevertreated([11]), data=hrs,
+            yterm=term(:oop_spend), treatname=:wave_hosp, treatintterms=(),
+            xterms=(fe(:wave)+fe(:hhidpn)))
+    end
+    @test r[1] == didspec(Reg, dynamic(:wave, -1), notyettreated([11]), data=hrs,
+        yterm=term(:oop_spend), treatname=:wave_hosp, treatintterms=(),
+        xterms=(fe(:wave)+fe(:hhidpn)))()
 end
