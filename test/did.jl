@@ -18,12 +18,13 @@
     @test nobs(r) == 2624
     
     @test sprint(show, r) == "Regression-based DID result"
+    pv = VERSION < v"1.7.0-DEV" ? " <1e-5" : "<1-e05" 
     @test sprint(show, MIME("text/plain"), r) == """
         ──────────────────────────────────────────────────────────────────────
         Summary of results: Regression-based DID
         ──────────────────────────────────────────────────────────────────────
         Number of obs:               2624    Degrees of freedom:           670
-        F-statistic:                 4.81    p-value:                    <1e-5
+        F-statistic:                 4.81    p-value:                   $pv
         ──────────────────────────────────────────────────────────────────────
         Cohort-interacted sharp dynamic specification
         ──────────────────────────────────────────────────────────────────────
