@@ -289,7 +289,7 @@ function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpD
     return (count,)
 end
 
-_getname(x, terms::AbstractDict) = coefnames(terms[x])
+_getname(x, terms::AbstractDict{AbstractTerm}) = coefnames(terms[x])
 
 """
     solveleastsquares!(args...)

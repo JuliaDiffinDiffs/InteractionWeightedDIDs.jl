@@ -219,6 +219,9 @@ end
 end
 
 @testset "SolveLeastSquares" begin
+    terms = Dict{AbstractTerm,AbstractTerm}(term(1)=>InterceptTerm{true}())
+    @test _getname(term(1), terms) == "(Intercept)"
+
     hrs = exampledata("hrs")
     nobs = size(hrs, 1)
     df = DataFrame(hrs)
@@ -227,8 +230,9 @@ end
     t0 = InterceptTerm{false}()
     tr = dynamic(:wave, -1)
     yxterms = Dict([x=>apply_schema(x, schema(x, df), StatisticalModel)
-        for x in (term(:oop_spend), t1, term(:t2), t0, term(:male))])
-    yxcols0 = Dict(term(:oop_spend)=>hrs.oop_spend, t1=>ones(nobs, 1))
+        for x in (term(:oop_spend), t1, term(:t2), t0, term(:male), term(:spouse))])
+    yxcols0 = Dict(term(:oop_spend)=>hrs.oop_spend, t1=>ones(nobs, 1),
+        term(:male)=>hrs.male, term(:spouse)=>hrs.spouse)
     col0 = convert(Vector{Float64}, (hrs.wave_hosp.==10).&(hrs.wave.==10))
     col1 = convert(Vector{Float64}, (hrs.wave_hosp.==10).&(hrs.wave.==11))
     tcols0 = Dictionary([(rel=0, wave_hosp=10), (rel=1, wave_hosp=10)], [col0, col1])
@@ -255,6 +259,9 @@ end
     ret1 = solveleastsquares!(nt1...)
     @test ret1.xterms == AbstractTerm[]
     @test size(ret1.X, 2) == 2
+    nt1 = merge(nt, (xterms=TermSet((term(:spouse), term(:male)).=>nothing),))
+    ret1 = solveleastsquares!(nt1...)
+    @test ret1.xterms == AbstractTerm[term(:male), term(:spouse), InterceptTerm{true}()]
 
     # Test colliner xterms are handled
     yxcols1 = Dict(term(:oop_spend)=>hrs.oop_spend, t1=>ones(nobs), term(:t2)=>df.t2)
