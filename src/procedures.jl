@@ -398,7 +398,7 @@ end
 
 function _vce(data, esample::BitVector, vce::Vcov.ClusterCovariance,
         fes::Vector{FixedEffect})
-    cludata = subcolumns(data, vce.clusters, esample)
+    cludata = subcolumns(data, Vcov.names(vce), esample)
     concrete_vce = Vcov.materialize(cludata, vce)
     dof_absorb = 0
     for fe in fes
