@@ -502,8 +502,9 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
         for r in lswtrows[i]
             rs = rows[r]
             d[rs] .= 1.0
-            ycellmeans[i] += sum(view(yresid, rs).*view(weights, rs))
-            ycellweights[i] += sum(view(weights, rs))
+            wts = view(weights, rs)
+            ycellmeans[i] += sum(view(yresid, rs).*wts)
+            ycellweights[i] += sum(wts)
         end
 
         if feM !== nothing

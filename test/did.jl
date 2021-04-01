@@ -14,7 +14,7 @@
     @test coef(r, "wave_hosp: 10 & rel: -2") ≈ 410.58102 atol=1e-5
     @test coef(r, "wave_hosp: 10 & rel: 0") ≈ 3091.5084 atol=1e-4
     @test nobs(r) == 2624
-    @test all(i->r.coef[i]≈sum(r.lsweights[:,i].*r.ycellmeans), 1:length(r.cellweights))
+    @test all(i->r.coef[i]≈sum(r.lsweights[:,i].*r.ycellmeans), 1:ntreatcoef(r))
 
     @test sprint(show, r) == "Regression-based DID result"
     pv = VERSION < v"1.6.0" ? " <1e-7" : "<1e-07"
@@ -67,10 +67,11 @@ end
     @test vce(a) == vce(r)
     @test nobs(a) == nobs(r)
     @test outcomename(a) == outcomename(r)
+    @test weights(a) == weights(r)
     @test treatnames(a) == a.coefnames
     @test dof_residual(a) == dof_residual(r)
 
-    pv = VERSION < v"1.6.0" ? " <1e-4 " : "<1e-04"
+    pv = VERSION < v"1.6.0" ? "<1e-4 " : "<1e-04"
     @test sprint(show, a) === """
         ───────────────────────────────────────────────────────────────────────────────────
                                  Estimate  Std. Error     t  Pr(>|t|)  Lower 95%  Upper 95%
@@ -86,6 +87,9 @@ end
         wave_hosp: 10 & rel: 0   3091.51      998.667  3.10    0.0020   1133.25     5049.77
         ───────────────────────────────────────────────────────────────────────────────────"""
 
+    r = @did(Reg, data=hrs, dynamic(:wave, -1), notyettreated(11),
+        vce=Vcov.cluster(:hhidpn), yterm=term(:oop_spend), treatname=:wave_hosp,
+        treatintterms=(), xterms=(fe(:wave)+fe(:hhidpn)), solvelsweights=true)
     # Compare estimates with Stata results from Sun and Abraham (2020)
     a = agg(r, :rel)
     @test coef(a, "rel: -3") ≈ 591.04639 atol=1e-5
@@ -93,6 +97,8 @@ end
     @test coef(a, "rel: 0") ≈ 2960.0448 atol=1e-4
     @test coef(a, "rel: 1") ≈ 529.76686 atol=1e-5
     @test coef(a, "rel: 2") ≈ 800.10647 atol=1e-5
+
+    @test all(i->a.coef[i]≈sum(a.lsweights[:,i].*r.ycellmeans), 1:ntreatcoef(a))
 end
 
 @testset "@specset" begin
