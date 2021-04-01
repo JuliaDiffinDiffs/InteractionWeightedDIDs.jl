@@ -497,7 +497,7 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
     lswtmat = Matrix{Float64}(undef, nlswtrow, nt)
     ycellmeans = Vector{Float64}(undef, nlswtrow)
     ycellweights = Vector{Float64}(undef, nlswtrow)
-    @inbounds for i in 1:nlswtrow
+    for i in 1:nlswtrow
         fill!(d, 0.0)
         for r in lswtrows[i]
             rs = rows[r]
