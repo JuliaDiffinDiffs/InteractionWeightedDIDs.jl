@@ -13,7 +13,24 @@
     @test coef(r, "wave_hosp: 10 & rel: -3") ≈ 591.04639 atol=1e-5
     @test coef(r, "wave_hosp: 10 & rel: -2") ≈ 410.58102 atol=1e-5
     @test coef(r, "wave_hosp: 10 & rel: 0") ≈ 3091.5084 atol=1e-4
+
+    @test coef(r) === r.coef
+    @test vcov(r) === r.vcov
+    @test vce(r) === r.vce
     @test nobs(r) == 2624
+    @test outcomename(r) == "oop_spend"
+    @test coefnames(r) == ["wave_hosp: $w & rel: $r"
+        for (w, r) in zip(repeat(8:10, inner=3), [0, 1, 2, -2, 0, 1, -3, -2, 0])]
+    @test treatcells(r) == r.treatcells
+    @test weights(r) === nothing
+    @test ntreatcoef(r) == 9
+    @test treatcoef(r) == coef(r)
+    @test treatvcov(r) == vcov(r)
+    @test treatnames(r) == coefnames(r)
+    @test dof_residual(r) == 2610
+    @test responsename(r) == "oop_spend"
+    @test coefinds(r) == r.coefinds
+    @test ncovariate(r) == 0
 
     @test r.ycellweights == r.ycellcounts
     @test r.ycellcounts == repeat([252, 176, 163, 65], inner=4)
@@ -56,6 +73,15 @@
         ──────────────────────────────────────────────────────────────────────
         Fixed effects: none
         ──────────────────────────────────────────────────────────────────────"""
+
+    sr = view(r, 1:3)
+    @test coef(sr)[1] ≈ 1560.2174484214308
+    @test vcov(sr)[1] ≈ 1.1248572269146878e6
+    @test parent(sr) === r
+
+    tr = rescale(r, fill(2, 5), 1:5)
+    @test coef(tr)[1] ≈ 2 * coef(sr)[1]
+    @test vcov(tr)[1] ≈ 4 * vcov(sr)[1]
 end
 
 @testset "AggregatedRegBasedDIDResult" begin
@@ -66,13 +92,21 @@ end
     a = agg(r)
     @test coef(a) == coef(r)
     @test vcov(a) == vcov(r)
-
     @test vce(a) == vce(r)
     @test nobs(a) == nobs(r)
     @test outcomename(a) == outcomename(r)
+    @test coefnames(a) === a.coefnames
+    @test treatcells(a) === a.treatcells
     @test weights(a) == weights(r)
+    @test ntreatcoef(a) == 9
+    @test treatcoef(a) == coef(a)
+    @test treatvcov(a) == vcov(a)
     @test treatnames(a) == a.coefnames
+    @test parent(a) === r
     @test dof_residual(a) == dof_residual(r)
+    @test responsename(a) == "oop_spend"
+    @test coefinds(a) === a.coefinds
+    @test ncovariate(a) == 0
 
     pv = VERSION < v"1.6.0" ? "<1e-4 " : "<1e-04"
     @test sprint(show, a) === """
