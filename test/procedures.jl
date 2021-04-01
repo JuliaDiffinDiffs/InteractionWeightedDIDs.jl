@@ -438,7 +438,7 @@ end
     @test all(lswt[lswt.r.wave_hosp.==10, 1] .≈ [-0.2, -0.2, -0.2, 0.8, -0.2])
     @test all(lswt[lswt.r.wave_hosp.==10, 2] .≈ [-0.2, -0.2, -0.2, -0.2, 0.8])
     @test all(x->x≈0, lswt[lswt.r.wave_hosp.!=10, :])
-    @test ret.ycellweights == length.(rows)
+    @test ret.ycellweights == ret.ycellcounts == length.(rows)
     @test all(i->ret.ycellmeans[i] == sum(y[rows[i]])/length(rows[i]), 1:length(rows))
 
     nt0 = merge(nt, (lswtnames=(:no,),))
@@ -448,28 +448,23 @@ end
     ret = solveleastsquaresweights(nt...)
     lswt = ret.lsweights
     @test size(lswt.r) == (5, 1)
-    @test lswt.r.wave == collect(7:11)
+    @test lswt.r.wave == 7:11
 
-    nt = merge(nt, (lswtnames=(:rel,),))
-    ret = solveleastsquaresweights(nt...)
-    lswt = ret.lsweights
-    @test size(lswt.r) == (8, 1)
-    @test lswt.r.rel == collect(-4:3)
-
-    nt = merge(nt, (lswtnames=(:rel, :wave_hosp),))
+    nt = merge(nt, (lswtnames=(:wave, :wave_hosp),))
     ret = solveleastsquaresweights(nt...)
     lswt = ret.lsweights
     @test size(lswt.r) == (20, 2)
-    @test lswt.r.rel == [-4, -3, -3, -2, -2, -2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3]
-    @test lswt.r.wave_hosp ==
-        [11, 10, 11, 9, 10, 11, 8, 9, 10, 11, 8, 9, 10, 11, 8, 9, 10, 8, 9, 8]
+    @test lswt.r.wave == repeat(7:11, inner=4)
+    @test lswt.r.wave_hosp == repeat(8:11, outer=5)
+    @test all(lswt[lswt.r.wave_hosp.==10, 1] .≈ [-0.2, -0.2, -0.2, 0.8, -0.2])
+    @test all(lswt[lswt.r.wave_hosp.==10, 2] .≈ [-0.2, -0.2, -0.2, -0.2, 0.8])
 
     X = hcat(X, male)
     crossx = cholesky!(Symmetric(X'X))
     cf = crossx \ (X'y)
     xterms = AbstractTerm[yxterms[term(:male)]]
     nt = merge(nt, (lswtnames=(:wave_hosp, :wave), X=X, crossx=crossx,
-        xterms = xterms, coef=cf))
+        xterms=xterms, coef=cf))
     ret = solveleastsquaresweights(nt...)
     lswt = ret.lsweights
     w1 = -0.20813279638542392

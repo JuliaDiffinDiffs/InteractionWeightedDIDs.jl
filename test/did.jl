@@ -14,6 +14,9 @@
     @test coef(r, "wave_hosp: 10 & rel: -2") ≈ 410.58102 atol=1e-5
     @test coef(r, "wave_hosp: 10 & rel: 0") ≈ 3091.5084 atol=1e-4
     @test nobs(r) == 2624
+
+    @test r.ycellweights == r.ycellcounts
+    @test r.ycellcounts == repeat([252, 176, 163, 65], inner=4)
     @test all(i->r.coef[i]≈sum(r.lsweights[:,i].*r.ycellmeans), 1:ntreatcoef(r))
 
     @test sprint(show, r) == "Regression-based DID result"
@@ -38,7 +41,7 @@
     r = @did(Reg, data=hrs, dynamic(:wave, -1), notyettreated([11]),
         vce=Vcov.cluster(:hhidpn), yterm=term(:oop_spend), treatname=:wave_hosp,
         treatintterms=(), cohortinteracted=false, lswtnames=(:wave_hosp, :wave))
-    @test all(i->r.coef[i]≈sum(r.lsweights[:,i].*r.ycellmeans), 1:length(r.cellweights))
+    @test all(i->r.coef[i]≈sum(r.lsweights[:,i].*r.ycellmeans), 1:ntreatcoef(r))
 
     @test sprint(show, MIME("text/plain"), r) == """
         ──────────────────────────────────────────────────────────────────────
@@ -98,7 +101,26 @@ end
     @test coef(a, "rel: 1") ≈ 529.76686 atol=1e-5
     @test coef(a, "rel: 2") ≈ 800.10647 atol=1e-5
 
+    @test a.cellweights == a.cellcounts
+    @test a.cellcounts == [163, 339, 591, 428, 252]
     @test all(i->a.coef[i]≈sum(a.lsweights[:,i].*r.ycellmeans), 1:ntreatcoef(a))
+
+    a1 = agg(r, (:rel,), subset=:rel=>isodd)
+    @test length(coef(a1)) == 2
+    @test coef(a1, "rel: -3") == coef(a, "rel: -3")
+    @test coef(a1, "rel: 1") == coef(a, "rel: 1")
+    @test sprint(show, a1) === """
+        ───────────────────────────────────────────────────────────────────
+                 Estimate  Std. Error     t  Pr(>|t|)  Lower 95%  Upper 95%
+        ───────────────────────────────────────────────────────────────────
+        rel: -3   591.046    1273.08   0.46    0.6425  -1905.3      3087.39
+        rel: 1    529.767     586.831  0.90    0.3667   -620.935    1680.47
+        ───────────────────────────────────────────────────────────────────"""
+
+    a1 = agg(r, [:rel], bys=:rel=>isodd)
+    @test length(coef(a1)) == 2
+    @test coef(a1, "rel: false") ≈ sum(coef(a, "rel: $r") for r in ["-2", "0", "2"])
+    @test coef(a1, "rel: true") ≈ sum(coef(a, "rel: $r") for r in ["-3", "1"])
 end
 
 @testset "@specset" begin

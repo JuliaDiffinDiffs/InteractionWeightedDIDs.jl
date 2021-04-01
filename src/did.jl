@@ -71,6 +71,7 @@ struct RegressionBasedDIDResult{TR<:AbstractTreatment, CohortInteracted} <: DIDR
     lsweights::Union{TableIndexedMatrix{Float64, Matrix{Float64}, VecColumnTable, VecColumnTable}, Nothing}
     ycellmeans::Union{Vector{Float64}, Nothing}
     ycellweights::Union{Vector{Float64}, Nothing}
+    ycellcounts::Union{Vector{Int}, Nothing}
 end
 
 function result(::Type{Reg}, @nospecialize(nt::NamedTuple))
@@ -85,7 +86,7 @@ function result(::Type{Reg}, @nospecialize(nt::NamedTuple))
         yname, cnames, coefinds, nt.treatcells, nt.treatname, nt.yxterms,
         yterm, nt.xterms, nt.contrasts, nt.weightname,
         nt.fenames, nt.nfeiterations, nt.feconverged, nt.nsingle,
-        nt.lsweights, nt.ycellmeans, nt.ycellweights)
+        nt.lsweights, nt.ycellmeans, nt.ycellweights, nt.ycellcounts)
     return merge(nt, (result=didresult,))
 end
 
@@ -185,9 +186,9 @@ function agg(r::RegressionBasedDIDResult{<:DynamicTreatment}, names=nothing;
         bys=nothing, subset=nothing)
     inds = subset === nothing ? Colon() : _parse_subset(r, subset, false)
     ptcells = treatcells(r)
-    names === nothing && (names = getfield(ptcells, :names))
-    bycells = subcolumns(ptcells, names, inds)
+    bycells = view(ptcells, inds)
     _parse_bycells!(getfield(bycells, :columns), ptcells, bys)
+    names === nothing || (bycells = subcolumns(bycells, names, nomissing=false))
 
     tcells, rows = cellrows(bycells, findcell(bycells))
     ncell = length(rows)
@@ -205,7 +206,7 @@ function agg(r::RegressionBasedDIDResult{<:DynamicTreatment}, names=nothing;
                     cwts = view(pcellweights, view(rs, inds))
                     cweights[view(rs, inds), i] .= cwts ./ sum(cwts)
                 else
-                    cweights[inds[1], i] = 1.0
+                    cweights[rs[inds[1]], i] = 1.0
                 end
             end
         else
@@ -214,7 +215,7 @@ function agg(r::RegressionBasedDIDResult{<:DynamicTreatment}, names=nothing;
     end
     cf = cweights' * pcf
     v = cweights' * view(treatvcov(r), inds, inds) * cweights
-    cellweights = [sum(pcellcounts[rows[i]]) for i in 1:ncell]
+    cellweights = [sum(pcellweights[rows[i]]) for i in 1:ncell]
     cellcounts = [sum(pcellcounts[rows[i]]) for i in 1:ncell]
     cnames = _treatnames(tcells)
     coefinds = Dict(cnames .=> keys(cnames))

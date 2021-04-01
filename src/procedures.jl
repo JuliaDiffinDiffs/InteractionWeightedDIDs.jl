@@ -221,31 +221,13 @@ function maketreatcols(data, treatname::Symbol, treatintterms::TermSet,
                 tcellnames[i] = cellnames[i+1]
             end
         end
-        treatcells = VecColumnTable(tcellcols, tcellnames)
-        rowinds = Dict{VecColsRow, Int}()
-        cellinds = Vector{Int}()
-        trows = Vector{Vector{Int}}()
-        i = 0
-        @inbounds for row in Tables.rows(treatcells)
-            i += 1
-            r = get(rowinds, row, 0)
-            if r === 0
-                push!(cellinds, i)
-                rowinds[row] = length(cellinds)
-                push!(trows, copy(treatrows[i]))
-            else
-                append!(trows[r], treatrows[i])
-            end
+        tcols = VecColumnTable(tcellcols, tcellnames)
+        treatcells, subtrows = cellrows(tcols, findcell(tcols))
+        trows = Vector{Vector{Int}}(undef, length(subtrows))
+        @inbounds for (i, rs) in enumerate(subtrows)
+            trows[i] = vcat(view(treatrows, rs)...)
         end
-        for i in 1:ntcellcol
-            tcellcols[i] = view(tcellcols[i], cellinds)
-        end
-        # Need to sort the combined cells and rows
-        p = sortperm(treatcells)
-        @inbounds for i in 1:ntcellcol
-            tcellcols[i] = tcellcols[i][p]
-        end
-        treatrows = trows[p]
+        treatrows = trows
     end
 
     # Generate treatment indicators
@@ -458,21 +440,16 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
         feM::Union{AbstractFixedEffectSolver, Nothing}, fetol::Real, femaxiter::Int,
         weights::AbstractWeights)
 
-    solvelsweights || return (lsweights=nothing, ycellmeans=nothing, ycellweights=nothing)
-    length(lswtnames) == 0 && (lswtnames = propertynames(cells))
+    solvelsweights || return (lsweights=nothing, ycellmeans=nothing, ycellweights=nothing,
+        ycellcounts=nothing)
+    cellnames = propertynames(cells)
+    length(lswtnames) == 0 && (lswtnames = cellnames)
     nlswt = length(lswtnames)
-    if :rel in lswtnames
-        columns = copy(getfield(cells, :columns))
-        columns[2] = columns[2] - columns[1]
-        names = copy(getfield(cells, :names))
-        names[2] = :rel
-        cells = VecColumnTable(columns, names)
+    for n in lswtnames
+        n in cellnames || throw(ArgumentError("$n is invalid for lswtnames"))
     end
 
-    cellnames = propertynames(cells)
-    all(x->x in cellnames, lswtnames) ||
-        throw(ArgumentError("lswtnames contain invalid names"))
-
+    # Construct Y residualized by covariates and FEs but not treatment indicators
     yresid = yxcols[yxterms[yterm]]
     nx = length(xterms)
     nt = size(treatcells, 1)
@@ -492,12 +469,15 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
         lswtcells, lswtrows = cellrows(cols, findcell(cols))
     end
 
+    # Dummy variable on the left-hand-side
     d = Matrix{Float64}(undef, length(yresid), 1)
     nlswtrow = length(lswtrows)
     lswtmat = Matrix{Float64}(undef, nlswtrow, nt)
-    ycellmeans = Vector{Float64}(undef, nlswtrow)
-    ycellweights = Vector{Float64}(undef, nlswtrow)
-    for i in 1:nlswtrow
+    ycellmeans = zeros(nlswtrow)
+    ycellweights = zeros(nlswtrow)
+    ycellcounts = zeros(Int, nlswtrow)
+    @inbounds for i in 1:nlswtrow
+        # Reinitialize d for reuse
         fill!(d, 0.0)
         for r in lswtrows[i]
             rs = rows[r]
@@ -505,17 +485,16 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
             wts = view(weights, rs)
             ycellmeans[i] += sum(view(yresid, rs).*wts)
             ycellweights[i] += sum(wts)
+            ycellcounts[i] += length(rs)
         end
-
-        if feM !== nothing
-            _feresiduals!(d, feM, fetol, femaxiter)
-        end
+        feM === nothing || _feresiduals!(d, feM, fetol, femaxiter)
         weights isa UnitWeights || (d .*= sqrt.(weights))
         lswtmat[i,:] .= (crossx \ (X'd))[1:nt]
     end
     ycellmeans ./= ycellweights
     lswt = TableIndexedMatrix(lswtmat, lswtcells, treatcells)
-    return (lsweights=lswt, ycellmeans=ycellmeans, ycellweights=ycellweights)
+    return (lsweights=lswt, ycellmeans=ycellmeans, ycellweights=ycellweights,
+        ycellcounts=ycellcounts)
 end
 
 """
