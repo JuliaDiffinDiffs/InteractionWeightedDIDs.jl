@@ -465,7 +465,7 @@ end
     @test lswt[lswt.r.wave_hosp.==10, 2] ≈ [-1/3, -1/3, -1/3, 0, 1] atol=fetol
     @test all(x->isapprox(x, 0, atol=fetol), lswt[lswt.r.wave_hosp.!=10, :])
     @test ret.ycellweights == ret.ycellcounts == length.(rows)
-    @test all(i->ret.ycellmeans[i] == sum(y[rows[i]])/length(rows[i]), 1:length(rows))
+    @test all(i->ret.ycellmeans[i] ≈ sum(y[rows[i]])/length(rows[i]), 1:length(rows))
 
     nt0 = merge(nt, (lswtnames=(:no,),))
     @test_throws ArgumentError solveleastsquaresweights(nt0...)
