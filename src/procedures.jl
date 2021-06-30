@@ -188,6 +188,7 @@ function maketreatcols(data, treatname::Symbol, treatintterms::TermSet,
         weights::AbstractWeights, esample::BitVector,
         cohortinteracted::Bool, fetol::Real, femaxiter::Int,
         ::Type{DynamicTreatment{SharpDesign}}, time::Symbol,
+        pr::Type{<:TrendOrUnspecifiedPR},
         exc::Dict{Int,Int}, notreat::IdDict{ValidTimeType,Int})
 
     nobs = sum(esample)
@@ -286,16 +287,32 @@ const MakeTreatCols = StatsStep{:MakeTreatCols, typeof(maketreatcols), true}
 
 required(::MakeTreatCols) = (:data, :treatname, :treatintterms, :feM, :weights, :esample)
 default(::MakeTreatCols) = (cohortinteracted=true, fetol=1e-8, femaxiter=10000)
-transformed(::MakeTreatCols, @nospecialize(nt::NamedTuple)) = (typeof(nt.tr), nt.tr.time)
+transformed(::MakeTreatCols, @nospecialize(nt::NamedTuple)) =
+    (typeof(nt.tr), nt.tr.time, typeof(nt.pr))
 
 combinedargs(step::MakeTreatCols, allntargs) =
-    combinedargs(step, allntargs, typeof(allntargs[1].tr))
+    combinedargs(step, allntargs, typeof(allntargs[1].tr), typeof(allntargs[1].pr))
 
-# Obtain the relative time periods excluded by all tr in allntargs
-function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpDesign}})
+function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpDesign}},
+        ::Type{<:UnspecifiedParallel})
     exc = Dict{Int,Int}()
     notreat = IdDict{ValidTimeType,Int}()
-    @inbounds for nt in allntargs
+    for nt in allntargs
+        foreach(x->_count!(exc, x), nt.tr.exc)
+    end
+    nnt = length(allntargs)
+    for (k, v) in exc
+        v == nnt || delete!(exc, k)
+    end
+    return (exc, notreat)
+end
+
+# Obtain the relative time periods excluded by all tr in allntargs
+function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpDesign}},
+        ::Type{<:TrendParallel})
+    exc = Dict{Int,Int}()
+    notreat = IdDict{ValidTimeType,Int}()
+    for nt in allntargs
         foreach(x->_count!(exc, x), nt.tr.exc)
         foreach(x->_count!(notreat, x), nt.pr.e)
     end
@@ -315,14 +332,18 @@ end
 Solve the least squares problem for regression coefficients and residuals.
 See also [`SolveLeastSquares`](@ref).
 """
-function solveleastsquares!(tr::DynamicTreatment{SharpDesign}, pr::TrendParallel,
+function solveleastsquares!(tr::DynamicTreatment{SharpDesign}, pr::TrendOrUnspecifiedPR,
         yterm::AbstractTerm, xterms::TermSet, yxterms::Dict, yxcols::Dict,
         treatcells::VecColumnTable, treatcols::Vector,
         cohortinteracted::Bool, has_fe_intercept::Bool)
 
     y = yxcols[yxterms[yterm]]
     if cohortinteracted
-        tinds = .!((treatcells[2] .∈ (tr.exc,)).| (treatcells[1] .∈ (pr.e,)))
+        if pr isa TrendParallel
+            tinds = .!((treatcells[2] .∈ (tr.exc,)) .| (treatcells[1] .∈ (pr.e,)))
+        else
+            tinds = .!(treatcells[2] .∈ (tr.exc,))
+        end
     else
         tinds = .!(treatcells[1] .∈ (tr.exc,))
     end
