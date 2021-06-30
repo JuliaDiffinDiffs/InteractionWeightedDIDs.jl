@@ -186,9 +186,7 @@ See also [`MakeTreatCols`](@ref).
 function maketreatcols(data, treatname::Symbol, treatintterms::TermSet,
         feM::Union{AbstractFixedEffectSolver, Nothing},
         weights::AbstractWeights, esample::BitVector,
-        cohortinteracted::Bool, fetol::Real, femaxiter::Int,
-        ::Type{DynamicTreatment{SharpDesign}}, time::Symbol,
-        pr::Type{<:TrendOrUnspecifiedPR},
+        cohortinteracted::Bool, fetol::Real, femaxiter::Int, time::Symbol,
         exc::Dict{Int,Int}, notreat::IdDict{ValidTimeType,Int})
 
     nobs = sum(esample)
@@ -287,34 +285,19 @@ const MakeTreatCols = StatsStep{:MakeTreatCols, typeof(maketreatcols), true}
 
 required(::MakeTreatCols) = (:data, :treatname, :treatintterms, :feM, :weights, :esample)
 default(::MakeTreatCols) = (cohortinteracted=true, fetol=1e-8, femaxiter=10000)
-transformed(::MakeTreatCols, @nospecialize(nt::NamedTuple)) =
-    (typeof(nt.tr), nt.tr.time, typeof(nt.pr))
+# No need to consider typeof(tr) and typeof(pr) given the restrictions by valid_didargs
+transformed(::MakeTreatCols, @nospecialize(nt::NamedTuple)) = (nt.tr.time,)
 
-combinedargs(step::MakeTreatCols, allntargs) =
-    combinedargs(step, allntargs, typeof(allntargs[1].tr), typeof(allntargs[1].pr))
-
-function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpDesign}},
-        ::Type{<:UnspecifiedParallel})
+# Obtain the relative time periods excluded by all tr
+# and the treatment groups excluded by all pr in allntargs
+function combinedargs(::MakeTreatCols, allntargs)
     exc = Dict{Int,Int}()
     notreat = IdDict{ValidTimeType,Int}()
     for nt in allntargs
         foreach(x->_count!(exc, x), nt.tr.exc)
-    end
-    nnt = length(allntargs)
-    for (k, v) in exc
-        v == nnt || delete!(exc, k)
-    end
-    return (exc, notreat)
-end
-
-# Obtain the relative time periods excluded by all tr in allntargs
-function combinedargs(::MakeTreatCols, allntargs, ::Type{DynamicTreatment{SharpDesign}},
-        ::Type{<:TrendParallel})
-    exc = Dict{Int,Int}()
-    notreat = IdDict{ValidTimeType,Int}()
-    for nt in allntargs
-        foreach(x->_count!(exc, x), nt.tr.exc)
-        foreach(x->_count!(notreat, x), nt.pr.e)
+        if nt.pr isa TrendParallel
+            foreach(x->_count!(notreat, x), nt.pr.e)
+        end
     end
     nnt = length(allntargs)
     for (k, v) in exc
