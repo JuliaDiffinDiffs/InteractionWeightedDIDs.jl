@@ -62,7 +62,8 @@ end
 
     allntargs = NamedTuple[(feterms=Set{FETerm}(),), (feterms=Set(feterms),),
         (feterms=Set(([:hhidpn]=>Symbol[],)),)]
-    @test combinedargs(MakeFEs(), allntargs) == (push!(feterms, [:hhidpn]=>Symbol[]),)
+    @test Set(combinedargs(MakeFEs(), allntargs)) ==
+        Set((push!(feterms, [:hhidpn]=>Symbol[]),))
 
     nt = (data=hrs, feterms=feterms)
     @test MakeFEs()(nt) == merge(nt, ret)
