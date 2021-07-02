@@ -1,3 +1,4 @@
+# A vector of fixed effects paired with a vector of interactions (empty if not interacted)
 const FETerm = Pair{Vector{Symbol},Vector{Symbol}}
 
 # Parse fixed effects from a generic term

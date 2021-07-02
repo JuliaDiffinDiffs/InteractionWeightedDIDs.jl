@@ -75,7 +75,7 @@ groupfeterms(feterms::Set{FETerm}) = (feterms=feterms,)
 """
     GroupFEterms <: StatsStep
 
-Call [`DiffinDiffsBase.groupfeterms`](@ref)
+Call [`InteractionWeightedDIDs.groupfeterms`](@ref)
 to obtain one of the instances of `feterms`
 that have been grouped by equality (`hash`)
 for allowing later comparisons based on object-id.
