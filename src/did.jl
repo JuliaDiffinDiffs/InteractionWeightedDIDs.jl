@@ -360,7 +360,7 @@ end
 
 function _checklengthmatch(v, name::String, N::Int)
     length(v) == N || throw(ArgumentError(
-        "The length of `$name` ($(length(v))) does not match the number of rows of `cr` ($(N)"))
+        "The length of $name ($(length(v))) does not match the number of rows of cr ($(N))"))
 end
 
 _checklengthmatch(v::Nothing, name::String, N::Int) = nothing
