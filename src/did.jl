@@ -3,7 +3,7 @@
 
 Estimation procedure for regression-based difference-in-differences.
 
-A `StatsSpec` for this procedure accept the following arguments:
+A `StatsSpec` for this procedure accepts the following arguments:
 
 | Key | Type restriction | Default value | Description |
 |:---|:---|:---|:---|

@@ -568,7 +568,6 @@ function solveleastsquaresweights(::DynamicTreatment{SharpDesign},
         cellcounts=nothing)
     cellnames = propertynames(cells)
     length(lswtnames) == 0 && (lswtnames = cellnames)
-    nlswt = length(lswtnames)
     for n in lswtnames
         n in cellnames || throw(ArgumentError("$n is invalid for lswtnames"))
     end
