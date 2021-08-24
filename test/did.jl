@@ -299,12 +299,16 @@ end
     @test c3.c.iresult == [0, (1 for i in 1:2)..., (2 for i in 1:5)...]
     @test c3.c.icoef == [0, 1, 8, 1:5...]
     @test all(c3.r.wave.==7)
+    ri = r1.lsweights.r.wave.==7
+    @test c3[:,1] == r1.cellymeans[ri]
+    @test c3[:,2:end] == c2[ri,[2,9,11:15...]]
 
     c4 = contrast(r1, r2, subset=1:3, coefs=(1=>1:2, 2=>:))
     @test size(c4) == (3, 8)
     @test c4.c.iresult == [0, (1 for i in 1:2)..., (2 for i in 1:5)...]
     @test c4.c.icoef == [0:2..., 1:5...]
     @test c4.r == view(r1.lsweights.r, 1:3)
+    @test c4[:,2:end] == c2[1:3,[2,3,11:15...]]
 end
 
 @testset "post!" begin
