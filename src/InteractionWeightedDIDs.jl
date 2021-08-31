@@ -38,7 +38,7 @@ export CheckVcov,
        SolveLeastSquares,
        EstVcov,
        SolveLeastSquaresWeights,
-       
+
        RegressionBasedDID,
        Reg,
        RegressionBasedDIDResult,
