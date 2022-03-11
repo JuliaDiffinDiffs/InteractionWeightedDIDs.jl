@@ -1,3 +1,10 @@
+> ⚠️ **Attention: This package is moved**
+> 
+> InteractionWeightedDIDs.jl has been migrated to the new location [here](https://github.com/JuliaDiffinDiffs/DiffinDiffs.jl/tree/master/lib/InteractionWeightedDIDs)
+> within the repo for
+> [DiffinDiffs.jl](https://github.com/JuliaDiffinDiffs/DiffinDiffs.jl).
+> Development will only happen there and this repo is archived.
+
 # InteractionWeightedDIDs.jl
 
 *Regression-based multi-period difference-in-differences with heterogenous treatment effects*
